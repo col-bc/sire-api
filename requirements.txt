@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+sqlalchemy
+databases
+pymysql
+aiomysql
+google-cloud-storage
+python-multipart
+python-jose
+cryptography
