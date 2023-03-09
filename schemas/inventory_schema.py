@@ -3,7 +3,8 @@ from datetime import datetime
 
 class ItemSchemaIn(BaseModel):
     name: str
-    image_url: str
+    tags: str | None
+    image_url: str | None
     size: str
     sku: str
     upc: str
@@ -16,8 +17,8 @@ class ItemSchemaIn(BaseModel):
         
 class ItemSchema(ItemSchemaIn):
     id: int
-    created_at: datetime
-    updated_at: datetime
+    created_at: datetime | None
+    updated_at: datetime | None
 
     class Config:
         orm_mode = True

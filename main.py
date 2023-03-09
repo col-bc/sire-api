@@ -2,15 +2,14 @@ from datetime import datetime
 from typing import List
 from uuid import uuid4
 
-from fastapi import FastAPI, Depends, File, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
 from fastapi.security.api_key import APIKeyHeader
+from jose import JWTError, jwt
 
-from jose import jwt, JWTError
-
-import models.inventory_item
+from models.inventory_item import inventory_shoe
 import utilities
 from database import database, engine, metadata
-from schemas.inventory_shema import ItemSchema, ItemSchemaIn
+from schemas.inventory_schema import ItemSchema, ItemSchemaIn
 
 metadata.create_all(engine)
 
@@ -19,6 +18,9 @@ app = FastAPI()
 oauth2_scheme = APIKeyHeader(name="access_token", auto_error=False)
 
 def verify_token(token: str):
+    if token is None:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    
     try:
         payload = jwt.decode(token, 'inventory-secret-key', algorithms=['HS256'])
         print(payload)
@@ -43,18 +45,21 @@ async def shutdown():
 async def read_inventory(token: str = Depends(oauth2_scheme)):
     verify_token(token)
    
-    query = models.inventory_item.inventory_item.select()
+    query = inventory_shoe.select()
     items = await database.fetch_all(query)
     return items 
 
 
 @app.post("/inventory", response_model=ItemSchema, status_code=201)
-async def create_inventory_item(item: ItemSchemaIn, token: str = Depends(oauth2_scheme)):
+async def create_inventory_shoe(item: ItemSchemaIn, token: str = Depends(oauth2_scheme)):
     verify_token(token)
     
-    query = models.inventory_item.inventory_item.insert().values(
+    print(item)
+    
+    query = inventory_shoe.insert().values(
         name=item.name,
-        image_url=item.image_url,
+        tags=item.tags if item.tags else '[]',
+        image_url=item.image_url if item.image_url else None,
         size=item.size,
         sku=item.sku,
         upc=item.upc,
@@ -62,7 +67,7 @@ async def create_inventory_item(item: ItemSchemaIn, token: str = Depends(oauth2_
         brand=item.brand,
         market_price=item.market_price,
         created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow(),
+        updated_at=datetime.utcnow()
     )
     inserted_id = await database.execute(query)
     return {**item.dict(), "id": inserted_id}
@@ -72,8 +77,8 @@ async def create_inventory_item(item: ItemSchemaIn, token: str = Depends(oauth2_
 async def read_item(item_id: int, token: str = Depends(oauth2_scheme)):
     verify_token(token)
     
-    query = models.inventory_item.inventory_item.select().where(
-        models.inventory_item.inventory_item.c.id == item_id
+    query = inventory_shoe.select().where(
+        inventory_shoe.c.id == item_id
     )
     item = await database.fetch_one(query)
     return item
@@ -84,19 +89,21 @@ async def update_item(item_id: int, item: ItemSchemaIn, token: str = Depends(oau
     verify_token(token)
     
     query = (
-        models.inventory_item.inventory_item.update()
-        .where(models.inventory_item.inventory_item.c.id == item_id)
+        inventory_shoe.update()
+        .where(inventory_shoe.c.id == item_id)
         .values(
             name=item.name,
-            image_url=item.image_url,
+            tags=item.tags if item.tags else '[]',
+            image_url=item.image_url if item.image_url else None,
             size=item.size,
             sku=item.sku,
             upc=item.upc,
             shoe_type=item.shoe_type,
             brand=item.brand,
             market_price=item.market_price,
+            updated_at=datetime.utcnow()
         )
-        .returning(models.inventory_item.inventory_item.c.id)
+        .returning(inventory_shoe.c.id)
     )
     updated_id = await database.execute(query)
     return {**item.dict(), "id": updated_id}
@@ -123,8 +130,8 @@ async def upload_image(item_id: int, image: UploadFile = File(...), token: str =
 
     # Update the db item with the new image url
     query = (
-        models.inventory_item.inventory_item.update()
-        .where(models.inventory_item.inventory_item.c.id == item_id)
+        inventory_shoe.update()
+        .where(inventory_shoe.c.id == item_id)
         .values(
             image_url=f'https://storage.googleapis.com/sire_inventory/{uid}',
             updated_at=datetime.utcnow()
