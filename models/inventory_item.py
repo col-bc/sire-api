@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, Integer, String,Table
+from sqlalchemy import Column, DateTime, Integer, String, Table
 
 from database import metadata
 
@@ -9,7 +9,7 @@ inventory_shoe = Table(
     metadata,
     Column('id', Integer, primary_key=True),
     Column('name', String(255), nullable=False),
-    Column('tags', String(255), default='[]', nullable=False),
+    Column('tags', String(255), default='[]', nullable=True),
     Column('image_url', String(255), nullable=True),
     Column('size', String(255), nullable=False),
     Column('sku', String(255), nullable=False),

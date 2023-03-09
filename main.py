@@ -15,20 +15,18 @@ metadata.create_all(engine)
 
 app = FastAPI()
 
-oauth2_scheme = APIKeyHeader(name="access_token", auto_error=False)
+token_scheme = APIKeyHeader(name="access_token", auto_error=False)
 
 def verify_token(token: str):
     if token is None:
         raise HTTPException(status_code=401, detail="Invalid token")
-    
+
     try:
         payload = jwt.decode(token, 'inventory-secret-key', algorithms=['HS256'])
-        print(payload)
     except JWTError as e:
         print(e)
         raise HTTPException(status_code=401, detail="Invalid token")
     
-    return True
 
 
 @app.on_event("startup")
@@ -42,7 +40,7 @@ async def shutdown():
 
 
 @app.get("/inventory", response_model=List[ItemSchema], status_code=200)
-async def read_inventory(token: str = Depends(oauth2_scheme)):
+async def read_inventory(token: str = Depends(token_scheme)):
     verify_token(token)
    
     query = inventory_shoe.select()
@@ -51,15 +49,15 @@ async def read_inventory(token: str = Depends(oauth2_scheme)):
 
 
 @app.post("/inventory", response_model=ItemSchema, status_code=201)
-async def create_inventory_shoe(item: ItemSchemaIn, token: str = Depends(oauth2_scheme)):
+async def create_inventory_shoe(item: ItemSchemaIn, token: str = Depends(token_scheme)):
     verify_token(token)
     
     print(item)
     
     query = inventory_shoe.insert().values(
         name=item.name,
-        tags=item.tags if item.tags else '[]',
-        image_url=item.image_url if item.image_url else None,
+        tags=item.tags,
+        image_url=item.image_url,
         size=item.size,
         sku=item.sku,
         upc=item.upc,
@@ -74,7 +72,7 @@ async def create_inventory_shoe(item: ItemSchemaIn, token: str = Depends(oauth2_
 
 
 @app.get("/inventory/{item_id}", response_model=ItemSchema, status_code=200)
-async def read_item(item_id: int, token: str = Depends(oauth2_scheme)):
+async def read_item(item_id: int, token: str = Depends(token_scheme)):
     verify_token(token)
     
     query = inventory_shoe.select().where(
@@ -85,7 +83,7 @@ async def read_item(item_id: int, token: str = Depends(oauth2_scheme)):
 
 
 @app.put("/inventory/{item_id}", response_model=ItemSchema, status_code=201)
-async def update_item(item_id: int, item: ItemSchemaIn, token: str = Depends(oauth2_scheme)):
+async def update_item(item_id: int, item: ItemSchemaIn, token: str = Depends(token_scheme)):
     verify_token(token)
     
     query = (
@@ -110,10 +108,11 @@ async def update_item(item_id: int, item: ItemSchemaIn, token: str = Depends(oau
 
 
 @app.post("/inventory/{item_id}/image",  status_code=201)
-async def upload_image(item_id: int, image: UploadFile = File(...), token: str = Depends(oauth2_scheme)):
+async def upload_image(item_id: int, image: UploadFile = File(...), token: str = Depends(token_scheme)):
     verify_token(token)
     
-    item = read_item(item_id)
+    item = await read_item(item_id, token)
+    
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
 
