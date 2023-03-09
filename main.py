@@ -6,9 +6,9 @@ from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
 from fastapi.security.api_key import APIKeyHeader
 from jose import JWTError, jwt
 
-from models.inventory_item import inventory_shoe
 import utilities
 from database import database, engine, metadata
+from models.inventory_item import inventory_shoe
 from schemas.inventory_schema import ItemSchema, ItemSchemaIn
 
 metadata.create_all(engine)
