@@ -3,7 +3,7 @@ from typing import List
 from uuid import uuid4
 
 from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
-from fastapi.security.api_key import APIKeyHeader
+from fastapi.security.api_key import APIKeyQuery
 from jose import JWTError, jwt
 
 import utilities
@@ -15,11 +15,13 @@ metadata.create_all(engine)
 
 app = FastAPI()
 
-token_scheme = APIKeyHeader(name="access_token", auto_error=False)
+token_scheme = APIKeyQuery(name="access_token", auto_error=False)
 
 def verify_token(token: str):
+    print('verify_token ', token)
+
     if token is None:
-        raise HTTPException(status_code=401, detail="Invalid token")
+        raise HTTPException(status_code=401, detail="access_token header is required")
 
     try:
         payload = jwt.decode(token, 'inventory-secret-key', algorithms=['HS256'])
@@ -41,6 +43,7 @@ async def shutdown():
 
 @app.get("/inventory", response_model=List[ItemSchema], status_code=200)
 async def read_inventory(token: str = Depends(token_scheme)):
+    print('read_inventory ', token)
     verify_token(token)
    
     query = inventory_shoe.select()

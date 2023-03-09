@@ -5,8 +5,8 @@ from pydantic import BaseModel
 
 class ItemSchemaIn(BaseModel):
     name: str
-    tags: str | None = None
-    image_url: str | None = None
+    tags: str
+    image_url: str
     size: str
     sku: str
     upc: str
@@ -19,8 +19,8 @@ class ItemSchemaIn(BaseModel):
         
 class ItemSchema(ItemSchemaIn):
     id: int
-    created_at: datetime | None = datetime.utcnow()
-    updated_at: datetime | None = datetime.utcnow()
+    created_at: datetime 
+    updated_at: datetime
 
     class Config:
         orm_mode = True
