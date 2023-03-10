@@ -150,7 +150,14 @@ async def upload_image(item_id: int, image: UploadFile = File(...), token: str =
     return item
     
 
-@app.get('/inventory/search/{query}')
-async def search_inventpry(query: str, token: str = Depends(token_scheme)):
+@app.get('/inventory/search/{query}', response_model=List[ItemSchema], status_code=200)
+async def search_inventory(query: str, token: str = Depends(token_scheme)):
     verify_token(token)
-    return
+    
+    query = inventory_shoe.select().where(
+        inventory_shoe.c.name.ilike(f'%{query}%')
+    )
+    items = await database.fetch_all(query)
+    if (len(items) == 0):
+        raise HTTPException(status_code=404, detail="No items found")
+    return items
