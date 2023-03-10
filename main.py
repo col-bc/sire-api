@@ -3,6 +3,7 @@ from typing import List
 from uuid import uuid4
 
 from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security.api_key import APIKeyQuery
 from jose import JWTError, jwt
 
@@ -14,6 +15,14 @@ from schemas.inventory_schema import ItemSchema, ItemSchemaIn
 metadata.create_all(engine)
 
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=['*'],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 token_scheme = APIKeyQuery(name="access_token", auto_error=False)
 
@@ -141,4 +150,7 @@ async def upload_image(item_id: int, image: UploadFile = File(...), token: str =
     return item
     
 
-        
+@app.get('/inventory/search/{query}')
+async def search_inventpry(query: str, token: str = Depends(token_scheme)):
+    verify_token(token)
+    return
