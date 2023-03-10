@@ -18,10 +18,8 @@ app = FastAPI()
 token_scheme = APIKeyQuery(name="access_token", auto_error=False)
 
 def verify_token(token: str):
-    print('verify_token ', token)
-
     if token is None:
-        raise HTTPException(status_code=401, detail="access_token header is required")
+        raise HTTPException(status_code=401, detail="access_token is required")
 
     try:
         payload = jwt.decode(token, 'inventory-secret-key', algorithms=['HS256'])
@@ -43,7 +41,6 @@ async def shutdown():
 
 @app.get("/inventory", response_model=List[ItemSchema], status_code=200)
 async def read_inventory(token: str = Depends(token_scheme)):
-    print('read_inventory ', token)
     verify_token(token)
    
     query = inventory_shoe.select()
@@ -110,7 +107,7 @@ async def update_item(item_id: int, item: ItemSchemaIn, token: str = Depends(tok
     return {**item.dict(), "id": updated_id}
 
 
-@app.post("/inventory/{item_id}/image",  status_code=201)
+@app.post("/inventory/{item_id}/image", response_model=ItemSchema, status_code=201)
 async def upload_image(item_id: int, image: UploadFile = File(...), token: str = Depends(token_scheme)):
     verify_token(token)
     
@@ -140,7 +137,8 @@ async def upload_image(item_id: int, image: UploadFile = File(...), token: str =
         )
     )
     await database.execute(query)
-    return {"image_url": f'https://storage.googleapis.com/sire_inventory/{uid}'}
+    item = await read_item(item_id, token)
+    return item
     
 
         
