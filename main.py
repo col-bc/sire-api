@@ -17,7 +17,7 @@ metadata.create_all(engine)
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=['*'],
+    allow_origins=['localhost:8080', 'sireapp.io'],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -48,13 +48,17 @@ async def shutdown():
     await database.disconnect()
 
 
-@app.get("/inventory", response_model=List[ItemSchema], status_code=200)
-async def read_inventory(token: str = Depends(token_scheme)):
+@app.get("/inventory", status_code=200)
+async def read_inventory(limit: int = 10, page: int = 0, token: str = Depends(token_scheme)):
     verify_token(token)
    
-    query = inventory_shoe.select()
+    query = inventory_shoe.select().limit(limit).offset(page * limit)
     items = await database.fetch_all(query)
-    return items 
+    return {
+        'items': items,
+        'page': page,
+        'pages': len(items) // limit 
+    }
 
 
 @app.post("/inventory", response_model=ItemSchema, status_code=201)
@@ -116,48 +120,22 @@ async def update_item(item_id: int, item: ItemSchemaIn, token: str = Depends(tok
     return {**item.dict(), "id": updated_id}
 
 
-@app.post("/inventory/{item_id}/image", response_model=ItemSchema, status_code=201)
-async def upload_image(item_id: int, image: UploadFile = File(...), token: str = Depends(token_scheme)):
-    verify_token(token)
-    
-    item = await read_item(item_id, token)
-    
-    if not item:
-        raise HTTPException(status_code=404, detail="Item not found")
-
-    if item.image_url:
-        # Delete the old image from cloud storage
-        if not utilities.delete_blob('sire_inventory', item.image_url.split('/')[-1]):
-            raise HTTPException(status_code=500, detail="Could not delete existing image")
-    
-    # Upload the image to cloud storage
-    contents = image.file.read()
-    uid = uuid4().hex
-    if not utilities.upload_blob('sire_inventory', contents, uid):
-        raise HTTPException(status_code=500, detail="Could not upload image")
-
-    # Update the db item with the new image url
-    query = (
-        inventory_shoe.update()
-        .where(inventory_shoe.c.id == item_id)
-        .values(
-            image_url=f'https://storage.googleapis.com/sire_inventory/{uid}',
-            updated_at=datetime.utcnow()
-        )
-    )
-    await database.execute(query)
-    item = await read_item(item_id, token)
-    return item
-    
-
 @app.get('/inventory/search/{query}', response_model=List[ItemSchema], status_code=200)
 async def search_inventory(query: str, token: str = Depends(token_scheme)):
     verify_token(token)
     
-    query = inventory_shoe.select().where(
-        inventory_shoe.c.name.ilike(f'%{query}%')
-    )
-    items = await database.fetch_all(query)
+    items = []
+    
+    # Search by name
+    q1 = inventory_shoe.select().where(
+        inventory_shoe.c.name.ilike(f'%{query}%'))
+    items.extend(await database.fetch_all(q1))
+    
+    # Search by sku
+    q2 = inventory_shoe.select().where(
+        inventory_shoe.c.sku.ilike(f'%{query}%'))
+    items.extend(await database.fetch_all(q2))
+    
     if (len(items) == 0):
         raise HTTPException(status_code=404, detail="No items found")
     return items
