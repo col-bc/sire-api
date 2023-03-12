@@ -17,7 +17,7 @@ metadata.create_all(engine)
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=['localhost:8080', 'sireapp.io'],
+    allow_origins=['127.0.0.1:8080', 'sireapp.io'],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
