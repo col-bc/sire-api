@@ -69,16 +69,13 @@ async def create_inventory_shoe(item: ItemSchemaIn, token: str = Depends(token_s
     
     query = inventory_shoe.insert().values(
         name=item.name,
-        tags=item.tags,
-        image_url=item.image_url,
+        image=item.image,
         size=item.size,
         sku=item.sku,
         upc=item.upc,
         shoe_type=item.shoe_type,
         brand=item.brand,
         market_price=item.market_price,
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow()
     )
     inserted_id = await database.execute(query)
     return {**item.dict(), "id": inserted_id}
@@ -104,15 +101,13 @@ async def update_item(item_id: int, item: ItemSchemaIn, token: str = Depends(tok
         .where(inventory_shoe.c.id == item_id)
         .values(
             name=item.name,
-            tags=item.tags if item.tags else '[]',
-            image_url=item.image_url if item.image_url else None,
+            image=item.image if item.image else None,
             size=item.size,
             sku=item.sku,
             upc=item.upc,
             shoe_type=item.shoe_type,
             brand=item.brand,
             market_price=item.market_price,
-            updated_at=datetime.utcnow()
         )
         .returning(inventory_shoe.c.id)
     )
